@@ -1,0 +1,139 @@
+---
+title: "Plotting and Statistical Analysis"
+author: "PON"
+date: "7/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Plotting and Statistic Analysis
+
+This document contains the code we used to make plots and perform statistical testing for experiment 1-3
+
+#### Prerequisite
+```{r }
+# import packages
+# if (!require("dplyr")) install.packages("dplyr")
+# if (!require("ggplot2")) install.packages("ggplot2")
+# if (!require("forcats")) install.packages("forcats")
+# if (!require("brms")) install.packages("brms")
+# if (!require("knitr")) install.packages("knitr")
+library(dplyr)
+library(ggplot2)
+library(forcats)
+library(brms)
+library(knitr)
+```
+
+### Experiment 1
+This section contains the code use to plot figures and perform statistical analysis for experiment1
+
+#### Plotting
+```{r }
+# import data
+data_1 <- read.csv("data_experiment_1.csv")
+# delete the row with NAs
+data_1 <- data_1 %>% filter(!is.na(rating))
+# recode the name of the variable
+data_1$condition <- recode(data_1$condition, HL="High-Low", L="Low", H="High", LH="Low-High")
+# change the data type of the columns
+data_1$condition <- as.factor(data_1$condition)
+data_1$item <- as.factor(data_1$item)
+data_1$ID <- as.factor (data_1$ID)
+data_1$modal <- as.factor (data_1$modal)
+summary(data_1)
+# reorder factor for plotting 
+data_1 <-  data_1 %>% mutate(condition = fct_relevel(condition,"High","High-Low","Low-High","Low"))
+summary(data_1)
+```
+
+```{r }
+# Plot the mean rating score across conditions
+# calculate the statistics
+data_mean <- data_1 %>% group_by(condition) %>% summarize(mean_rating=mean(rating),sd_rating=sd(rating),se=sd(rating) / sqrt(length(rating)))
+# making a bar plot
+ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
+  geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
+  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
+  labs(x = "Order of the Modals", y = "Probability Rating")+
+  theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+
+#ggsave("bar_plot_exp1.png")
+
+```
+#### Statistical testing
+```{r }
+# Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
+# re-level condition, rescale the dependent variable (to 0~1)
+data_1$condition<- factor(data_1$condition, levels = c("High-Low","Low-High","High","Low"))
+data_1$rating_rescale <- data_1$rating/100
+
+# recode the scale variable in which 1 is coded as 0.999, while 0 is coded as 0.001 (following Verkuilen, Smithson, 2012)
+data_1$rating_recode <- recode(data_1$rating_rescale, `1.00` = 0.999, `0.00` = 0.001)
+
+# change the dependent variable into logit 
+data_1$rating_logit <- log(data_1$rating_recode/(1-data_1$rating_recode))
+
+```
+```{r}
+# building a linear regression model with high-low condition as the baseline
+brm_max_HL_1 <- brm (rating_logit ~ 1 + condition + 
+                      (1+ condition|ID) + 
+                      (1+ condition|item),
+                    data = data_1,
+                    iter = 5000,
+                    control = list(adapt_delta = 0.99),
+                    seed = 123)
+summary(brm_max_HL_1)
+# create a table for model output
+output <- summary(brm_max_HL_1)$fixed
+output <- output[,1:4]
+row.names(output) <- c('Intercept', 'Low-High', 'High', 'Low')
+kable(
+  output,
+  digits = 2,
+  align = c('c','c','c','c','c'),
+  #format = "latex"
+)
+
+```
+
+```{r }
+# building a linear regression model with Low-High condition as the baseline
+data_1$condition<- factor(data_1$condition, levels = c("Low-High","High-Low","High","Low"))
+brm_max_LH_1 <- brm (rating_logit ~ 1 + condition + 
+                      (1+ condition|ID) + 
+                      (1+ condition|item),
+                    data = data_1,
+                    iter = 5000,
+                    control = list(adapt_delta = 0.99),
+                    seed = 123)
+summary(brm_max_LH_1)
+# create a table for model output
+output <- summary(brm_max_LH_1)$fixed
+output <- output[,1:4]
+row.names(output) <- c('Intercept', 'High-Low', 'High', 'Low')
+kable(
+  output,
+  digits = 2,
+  align = c('c','c','c','c','c'),
+  #format = "latex"
+)
+
+```
+
+
+#### Experiment 2
+
+```{r }
+
+```
+
+
