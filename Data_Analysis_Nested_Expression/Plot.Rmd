@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document contains the code we used to make plots and perform statistical testing for experiment 1-3
 
-#### Prerequisite
+### Prerequisite
 ```{r }
 # import packages
 # if (!require("dplyr")) install.packages("dplyr")
@@ -21,11 +21,13 @@ This document contains the code we used to make plots and perform statistical te
 # if (!require("forcats")) install.packages("forcats")
 # if (!require("brms")) install.packages("brms")
 # if (!require("knitr")) install.packages("knitr")
+# if (!require("stringr")) install.packages("stringr")
 library(dplyr)
 library(ggplot2)
 library(forcats)
 library(brms)
 library(knitr)
+library(stringr)
 ```
 
 ### Experiment 1
@@ -45,6 +47,7 @@ data_1$item <- as.factor(data_1$item)
 data_1$ID <- as.factor (data_1$ID)
 data_1$modal <- as.factor (data_1$modal)
 summary(data_1)
+
 # reorder factor for plotting 
 data_1 <-  data_1 %>% mutate(condition = fct_relevel(condition,"High","High-Low","Low-High","Low"))
 summary(data_1)
@@ -56,7 +59,8 @@ summary(data_1)
 data_mean <- data_1 %>% group_by(condition) %>% summarize(mean_rating=mean(rating),sd_rating=sd(rating),se=sd(rating) / sqrt(length(rating)))
 # making a bar plot
 ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
-  geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
+  #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Order of the Modals", y = "Probability Rating")+
@@ -64,10 +68,51 @@ ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
         axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
         axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
-
-#ggsave("bar_plot_exp1.png")
+ggsave("bar_plot_exp1_condition.png")
 
 ```
+
+```{r }
+# preparation for plotting: 
+# re-code the modal column so that the high modals always precede the low modals
+data_1$modal_recode <- recode(data_1$modal,may_certainly = "certainly_may", might_probably = "probably_might")
+summary(data_1)
+# create a column showing what modal each stimuli has
+mylist <- NULL
+counter <- 1
+for (item in data_1$condition){
+  if (item == "High") {epistemic_expression <- data_1$modal_recode[counter] %>% str_split("_") %>%
+sapply("[", 1)} # split the modal_recode column by "_", and take the first element
+  else if (item == "Low") {epistemic_expression <- data_1$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2)} 
+  else if (item == "Low-High") {epistemic_expression <- str_c(data_1$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2), data_1$modal_recode[counter] %>% str_split("_") %>%
+sapply("[", 1), sep = " ")} 
+  else {epistemic_expression <- str_c(data_1$modal_recode[counter] %>% str_split("_") %>% sapply("[", 1), data_1$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2), sep = " ")}
+ 
+counter <- counter +1
+mylist <- append(mylist, epistemic_expression)
+}
+data_1$epistemic_expression <- mylist
+```
+```{r}
+# plot the probability rating of different epistemic expressions
+# subset the data leaving only single model conditions
+data1_sub <- data_1 %>% filter(condition == "High" | condition == "Low" )
+# calculate the statistics
+data1_sub_mean <- data1_sub %>% group_by(epistemic_expression) %>% summarize(mean_rating=mean(rating),sd_rating=sd(rating),se=sd(rating) / sqrt(length(rating)))
+# create boxplot for data1_sub_mean
+ggplot(data1_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,mean_rating)),
+                                    y=mean_rating))+
+  geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
+  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
+  labs(x = "Epistemic Modals", y = "Probability Rating")+
+  theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+ggsave("bar_plot_exp1_modals.png")
+```
+
 #### Statistical testing
 ```{r }
 # Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
@@ -82,6 +127,7 @@ data_1$rating_recode <- recode(data_1$rating_rescale, `1.00` = 0.999, `0.00` = 0
 data_1$rating_logit <- log(data_1$rating_recode/(1-data_1$rating_recode))
 
 ```
+
 ```{r}
 # building a linear regression model with high-low condition as the baseline
 brm_max_HL_1 <- brm (rating_logit ~ 1 + condition + 
@@ -96,11 +142,11 @@ summary(brm_max_HL_1)
 output <- summary(brm_max_HL_1)$fixed
 output <- output[,1:4]
 row.names(output) <- c('Intercept', 'Low-High', 'High', 'Low')
-kable(
+mytable_exp1_1 <- kable(
   output,
   digits = 2,
   align = c('c','c','c','c','c'),
-  #format = "latex"
+  format = "latex"
 )
 
 ```
@@ -120,20 +166,111 @@ summary(brm_max_LH_1)
 output <- summary(brm_max_LH_1)$fixed
 output <- output[,1:4]
 row.names(output) <- c('Intercept', 'High-Low', 'High', 'Low')
-kable(
+mytable_exp1_2 <- kable(
   output,
   digits = 2,
   align = c('c','c','c','c','c'),
-  #format = "latex"
+  format = "latex"
 )
 
 ```
 
 
-#### Experiment 2
+### Experiment 2
+This section contains the code use to plot figures and perform statistical analysis for experiment1
 
+#### Plotting
 ```{r }
+# import data
+data_2 <- read.csv("data_experiment_2.csv")
+# delete the row with NAs
+data_2 <- data_2 %>% filter(!is.na(rating))
+# recode the name of the variable
+data_2$condition <- recode(data_2$condition, HL="High-Low", L="Low", H="High", LH="Low-High")
+# change the data type of the columns
+data_2$condition <- as.factor(data_2$condition)
+data_2$item <- as.factor(data_2$item)
+data_2$ID <- as.factor (data_2$ID)
+data_2$modal <- as.factor (data_2$modal)
+summary(data_2)
+
+# reorder factor for plotting 
+data_2 <-  data_2 %>% mutate(condition = fct_relevel(condition,"High","High-Low","Low-High","Low"))
+summary(data_2)
 
 ```
 
+```{r }
+# Plot the mean rating score across conditions
+# calculate the statistics
+data_mean_2 <- data_2 %>% group_by(condition) %>% summarize(mean_rating=mean(rating),sd_rating=sd(rating),se=sd(rating) / sqrt(length(rating)))
+# making a bar plot
+ggplot(data=data_mean_2, mapping= aes(x=condition,y=mean_rating))+
+  #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
+  labs(x = "Order of the Modals", y = "Probability Rating")+
+  theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+ggsave("bar_plot_exp2_condition.png")
 
+```
+```{r }
+# preparation for plotting: 
+# re-code the modal column so that the high modals always precede the low modals
+data_2$modal_recode <- recode(data_2$modal,may_cert= "certainly_may", may_def = "definitely_may", might_cert = "certainly_might", might_def = "definitely_might")
+summary(data_2)
+# create a column showing what modal each stimuli has
+mylist <- NULL
+counter <- 1
+for (item in data_2$condition){
+  if (item == "High") {epistemic_expression <- data_2$modal_recode[counter] %>% str_split("_") %>%
+sapply("[", 1)} # split the modal_recode column by "_", and take the first element
+  else if (item == "Low") {epistemic_expression <- data_2$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2)} 
+  else if (item == "Low-High") {epistemic_expression <- str_c(data_2$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2), data_2$modal_recode[counter] %>% str_split("_") %>%
+sapply("[", 1), sep = " ")} 
+  else {epistemic_expression <- str_c(data_2$modal_recode[counter] %>% str_split("_") %>% sapply("[", 1), data_2$modal_recode[counter] %>% str_split("_") %>% sapply("[", 2), sep = " ")}
+ 
+counter <- counter +1
+mylist <- append(mylist, epistemic_expression)
+}
+data_2$epistemic_expression <- mylist
+```
+```{r}
+# plot the probability rating of different epistemic expressions
+# subset the data leaving only single model conditions
+data2_sub <- data_2 %>% filter(condition == "High" | condition == "Low" )
+# calculate the statistics
+data2_sub_mean <- data2_sub %>% group_by(epistemic_expression) %>% summarize(mean_rating=mean(rating),sd_rating=sd(rating),se=sd(rating) / sqrt(length(rating)))
+# create boxplot for data1_sub_mean
+ggplot(data2_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,mean_rating)),
+                                    y=mean_rating))+
+  #geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
+  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
+  labs(x = "Epistemic Modals", y = "Probability Rating")+
+  theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+        axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+ggsave("bar_plot_exp2_modals.png")
+```
+
+#### Statistical testing
+```{r }
+# Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
+# re-level condition, rescale the dependent variable (to 0~1)
+data_1$condition<- factor(data_1$condition, levels = c("High-Low","Low-High","High","Low"))
+data_1$rating_rescale <- data_1$rating/100
+
+# recode the scale variable in which 1 is coded as 0.999, while 0 is coded as 0.001 (following Verkuilen, Smithson, 2012)
+data_1$rating_recode <- recode(data_1$rating_rescale, `1.00` = 0.999, `0.00` = 0.001)
+
+# change the dependent variable into logit 
+data_1$rating_logit <- log(data_1$rating_recode/(1-data_1$rating_recode))
+
+```
