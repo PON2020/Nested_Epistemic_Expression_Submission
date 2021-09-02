@@ -60,14 +60,14 @@ data_mean <- data_1 %>% group_by(condition) %>% summarize(mean_rating=mean(ratin
 # making a bar plot
 ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
-  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Order of the Modals", y = "Probability Rating")+
+  labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.5, face = "plain"))
 ggsave("bar_plot_exp1_condition.png")
 
 ```
@@ -105,11 +105,11 @@ ggplot(data1_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
   geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Epistemic Modals", y = "Probability Rating")+
+  labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.45, face = "plain"))
 ggsave("bar_plot_exp1_modals.png")
 ```
 
@@ -224,14 +224,14 @@ data_mean_2 <- data_2 %>% group_by(condition) %>% summarize(mean_rating=mean(rat
 # making a bar plot
 ggplot(data=data_mean_2, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
-  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Order of the Modals", y = "Probability Rating")+
+  labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.55, face = "plain"))
 ggsave("bar_plot_exp2_condition.png")
 
 ```
@@ -266,14 +266,14 @@ data2_sub_mean <- data2_sub %>% group_by(epistemic_expression) %>% summarize(mea
 ggplot(data2_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,mean_rating)),
                                     y=mean_rating))+
   #geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
-  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Epistemic Modals", y = "Probability Rating")+
+  labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.55, face = "plain"))
 ggsave("bar_plot_exp2_modals.png")
 ```
 
@@ -369,14 +369,14 @@ data_mean_3 <- data_3 %>% group_by(condition) %>% summarize(mean_rating=mean(rat
 # making a bar plot
 ggplot(data=data_mean_3, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
-  geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
+  geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Order of the Modals", y = "Probability Rating")+
+  labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.5, face = "plain"))
 ggsave("bar_plot_exp3_condition.png")
 ```
 
@@ -390,11 +390,11 @@ ggplot(data=data_mean_3_2, mapping= aes(x= modal,y=mean_rating, fill = condition
   #geom_col(width = 0.7,stat = "identity",position = "dodge",fill="steelblue")+
   #geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  #labs(x = "Order of the Modals", y = "Probability Rating")+
+  #labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 45, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.5, face = "plain"))
 #ggsave("bar_plot_exp3_condition.png")
 
 
@@ -434,11 +434,11 @@ ggplot(data3_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
   geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
   geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
-  labs(x = "Epistemic Modals", y = "Probability Rating")+
+  labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
         axis.text.y = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),  
-        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1, face = "plain"),
-        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -0.9, vjust = 0.5, face = "plain"))
+        axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = 0.5, vjust = -1.5, face = "plain"),
+        axis.title.y = element_text(color = "grey20", size = 12, angle = 0, hjust = -1.5, vjust = 0.57, face = "plain"))
 ggsave("bar_plot_exp3_modals.png")
 ```
 
