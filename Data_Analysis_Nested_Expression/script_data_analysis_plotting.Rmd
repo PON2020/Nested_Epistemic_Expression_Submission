@@ -1,7 +1,7 @@
 ---
-title: "Plotting and Statistical Analysis"
+title: "Plotting and Statistical Analysis for Resubmission"
 author: "PON"
-date: "7/13/2021"
+date: "Jan/17/2022"
 output: html_document
 ---
 
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document contains the code we used to make plots and perform statistical testing for experiment 1-3
 
-### Prerequisite
+### 0.Prerequisite
 ```{r }
 # import packages
 # if (!require("dplyr")) install.packages("dplyr")
@@ -30,10 +30,10 @@ library(knitr)
 library(stringr)
 ```
 
-### Experiment 1
+### 1.Experiment 1
 This section contains the code use to plot figures and perform statistical analysis for experiment1
 
-#### Plotting
+#### 1.1 Plotting
 ```{r }
 # import data
 data_1 <- read.csv("data_experiment_1.csv")
@@ -52,7 +52,7 @@ summary(data_1)
 data_1 <-  data_1 %>% mutate(condition = fct_relevel(condition,"High","High-Low","Low-High","Low"))
 summary(data_1)
 ```
-
+##### 1.1.1 Plot the mean rating score across conditions
 ```{r }
 # Plot the mean rating score across conditions
 # calculate the statistics
@@ -61,7 +61,7 @@ data_mean <- data_1 %>% group_by(condition) %>% summarize(mean_rating=mean(ratin
 ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
   geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -71,7 +71,7 @@ ggplot(data=data_mean, mapping= aes(x=condition,y=mean_rating))+
 ggsave("bar_plot_exp1_condition.png")
 
 ```
-
+##### 1.1.2 Plot probability rating of different epistemic expressions
 ```{r }
 # preparation for plotting: 
 # re-code the modal column so that the high modals always precede the low modals
@@ -103,7 +103,7 @@ data1_sub_mean <- data1_sub %>% group_by(epistemic_expression) %>% summarize(mea
 ggplot(data1_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,mean_rating)),
                                     y=mean_rating))+
   geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -113,7 +113,7 @@ ggplot(data1_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
 ggsave("bar_plot_exp1_modals.png")
 ```
 
-#### Statistical testing
+#### 1.2 Statistical testing
 ```{r }
 # Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
 # re-level condition, rescale the dependent variable (to 0~1)
@@ -128,6 +128,7 @@ data_1$rating_logit <- log(data_1$rating_recode/(1-data_1$rating_recode))
 
 ```
 
+##### 1.2.1 maximal brm model: High-low as the baseline
 ```{r}
 # building a linear regression model with high-low condition as the baseline
 brm_max_HL_1 <- brm (rating_logit ~ 1 + condition + 
@@ -135,7 +136,8 @@ brm_max_HL_1 <- brm (rating_logit ~ 1 + condition +
                       (1+ condition|item),
                     data = data_1,
                     iter = 5000,
-                    control = list(adapt_delta = 0.99),
+                    #control = list(adapt_delta = 0.99), set delta crashes the program
+                    #keep it to the default which is 0.95
                     seed = 123)
 summary(brm_max_HL_1)
 # create a table for model output
@@ -150,7 +152,7 @@ mytable_exp1_1 <- kable(
 )
 
 ```
-
+##### 1.2.2 maximal brm model: Low-High as the baseline
 ```{r }
 # building a linear regression model with Low-High condition as the baseline
 data_1$condition<- factor(data_1$condition, levels = c("Low-High","High-Low","High","Low"))
@@ -174,7 +176,98 @@ mytable_exp1_2 <- kable(
 )
 
 ```
-#### an additional question in experiment1
+
+##### 1.2.3 Bayes factor analysis
+The maximal model used in the previous section reveals no statistically meaningful difference between "High-Low" and "Low-High" condition. This section further investigates the likelihood ratio of H0 over H1.
+```{r}
+# Subset the data_1 keeping only the two nested modal conditions
+data_1_sub <- data_1 %>% filter(data_1$condition == "High-Low" | data_1$condition == "Low-High")
+# create a list of uninformative prior for slope
+# the prior has a mean of -0.2 (the estimate from the previous model)
+# the sd of the prior varies but not smaller than 1, thus not too informative
+prior_list_bf = c('normal(-0.2, 10)', 'normal(-0.2, 5)','normal(-0.2, 1)')
+# create an empty data frame to store the output of bf analysis
+tab_bf_analysis <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list_bf){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_1_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_1_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_1_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_bf_analysis[nrow(tab_bf_analysis)+1,] = new_row
+}
+write.csv(tab_bf_analysis, "tab_bf_analysis.csv")
+print(tab_bf_analysis)
+# The result reveals moderate to strong evidence for H0, which says
+# the coefficient of condition is zero
+# create latex table
+row.names(tab_bf_analysis) <- c('Prior', 'Estimate', 'BF01')
+tab_bf_analysis$estimate <- as.double(tab_bf_analysis$estimate)
+tab_bf_analysis$bf01 <- as.double(tab_bf_analysis$bf01 )
+mytable_exp1_3 <- kable(
+  tab_bf_analysis,
+  digits = 2,
+  align = c('c','c','c'),
+  format = "latex"
+)
+write.csv(tab_bf_analysis, "bf_analysis_exp1_1.csv")
+```
+##### 1.2.4 sensitivity analysis of prior 
+This section loops over a variety of priors for the slope of condition variable and see how they influence bf01
+```{r}
+tab_sa <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# select a set of means for the prior
+a <- seq(-0.2,0.2,by=0.1)
+# select a set of sds for the prior
+b <- seq(0.1,1,by=0.1)
+# cross a and b to get a set of mean and sd combinations
+c <- crossing(a,b)
+# create a list of priors containing all mean and sd combinations
+prior_list <- c()
+for (row in 1:nrow(c)){
+  first <- as.character(c[row,1])
+  second <- as.character(c[row,2])
+  label <- paste0("normal","(",first,",",second,")")
+prior_list <- append(prior_list, label)
+}
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_1_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_1_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_1_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_sa[nrow(tab_sa)+1,] = new_row
+}
+write.csv(tab_sa, "bf_analysis_exp1_2.csv")
+# calculate the proportion of BFs in favor of H0
+print(sum(tab_sa[,3]>=1)/length(tab_sa[,3]))
+```
+
+#### 1.3 An additional question in experiment1
 Was the rating score of the modal "probably" significantly different from the rating score of the modal "possibly"? The following code used linear mixed effects modal to explore this question
 ```{r }
 # subset data_1, leaving only rating scores for modal "probably and possibly"
@@ -193,10 +286,10 @@ summary(brm_max_exp1_expression)
 ```
 
 
-### Experiment 2
+### 2.Experiment 2
 This section contains the code use to plot figures and perform statistical analysis for experiment2
 
-#### Plotting
+#### 2.1 Plotting
 ```{r }
 # import data
 data_2 <- read.csv("data_experiment_2.csv")
@@ -216,7 +309,7 @@ data_2 <-  data_2 %>% mutate(condition = fct_relevel(condition,"High","High-Low"
 summary(data_2)
 
 ```
-
+##### 2.1.1 Plot the mean rating score across conditions
 ```{r }
 # Plot the mean rating score across conditions
 # calculate the statistics
@@ -225,7 +318,7 @@ data_mean_2 <- data_2 %>% group_by(condition) %>% summarize(mean_rating=mean(rat
 ggplot(data=data_mean_2, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
   geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -235,6 +328,7 @@ ggplot(data=data_mean_2, mapping= aes(x=condition,y=mean_rating))+
 ggsave("bar_plot_exp2_condition.png")
 
 ```
+##### 2.1.2 Plot the mean rating score across different epistemic expressions
 ```{r }
 # preparation for plotting: 
 # re-code the modal column so that the high modals always precede the low modals
@@ -267,7 +361,7 @@ ggplot(data2_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
                                     y=mean_rating))+
   #geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
   geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -277,7 +371,7 @@ ggplot(data2_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
 ggsave("bar_plot_exp2_modals.png")
 ```
 
-#### Statistical testing
+#### 2.2 Statistical testing
 ```{r }
 # Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
 # re-level condition, rescale the dependent variable (to 0~1)
@@ -291,7 +385,7 @@ data_2$rating_recode <- recode(data_2$rating_rescale, `1.00` = 0.999, `0.00` = 0
 data_2$rating_logit <- log(data_2$rating_recode/(1-data_2$rating_recode))
 
 ```
-
+##### 2.2.1 maximal brm model: High-low as the baseline
 ```{r}
 # building a linear regression model with high-low condition as the baseline
 brm_max_HL_2 <- brm (rating_logit ~ 1 + condition + 
@@ -299,7 +393,7 @@ brm_max_HL_2 <- brm (rating_logit ~ 1 + condition +
                       (1+ condition|item),
                     data = data_2,
                     iter = 5000,
-                    control = list(adapt_delta = 0.99),
+                    #control = list(adapt_delta = 0.99),
                     seed = 123)
 summary(brm_max_HL_2)
 # create a table for model output
@@ -313,7 +407,7 @@ mytable_exp2_1 <- kable(
   format = "latex"
 )
 ```
-
+##### 2.2.2 maximal brm model: Low-High as the baseline
 ```{r }
 # building a linear regression model with Low-High condition as the baseline
 data_2$condition<- factor(data_2$condition, levels = c("Low-High","High-Low","High","Low"))
@@ -337,11 +431,103 @@ mytable_exp2_2 <- kable(
 )
 
 ```
+##### 2.2.3 Bayes factor analysis
+The maximal model used in the previous section reveals no statistically meaningful difference between "High-Low" and "Low-High" condition. This section further investigates the likelihood ratio of H0 over H1.
+```{r}
+# Subset the data_1 keeping only the two nested modal conditions
+data_2_sub <- data_2 %>% filter(data_2$condition == "High-Low" | data_2$condition == "Low-High")
+# create a list of uninformative prior for slope
+# the prior has a mean of -0.12 (the estimate from the previous model)
+# the sd of the prior varies but not smaller than 1, thus not too informative
+prior_list_bf_2 = c('normal(-0.12, 10)', 'normal(-0.12, 5)','normal(-0.12, 1)')
+# create an empty data frame to store the output of bf analysis
+tab_bf_analysis_2 <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list_bf_2){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_2_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_2_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_2_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_bf_analysis_2[nrow(tab_bf_analysis_2)+1,] = new_row
+}
+write.csv(tab_bf_analysis_2, "tab_bf_analysis_2.csv")
+print(tab_bf_analysis_2)
+# The result reveals moderate to strong evidence for H0, which says
+# the coefficient of condition is zero
+# create latex table
+row.names(tab_bf_analysis_2) <- c('Prior', 'Estimate', 'BF01')
+tab_bf_analysis_2$estimate <- as.double(tab_bf_analysis_2$estimate)
+tab_bf_analysis_2$bf01 <- as.double(tab_bf_analysis_2$bf01 )
+mytable_exp2_3 <- kable(
+  tab_bf_analysis_2,
+  digits = 2,
+  align = c('c','c','c'),
+  format = "latex"
+)
+write.csv(tab_bf_analysis_2, "bf_analysis_exp2_1.csv")
+```
+##### 2.2.4 sensitivity analysis of prior 
+This section loops over a variety of priors for the slope of condition variable and see how they influence bf01
+```{r}
+tab_sa_2 <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# select a set of means for the prior
+a <- seq(-0.12,0.12,by=0.06)
+# select a set of sds for the prior
+b <- seq(0.1,1,by=0.1)
+# cross a and b to get a set of mean and sd combinations
+c <- crossing(a,b)
+# create a list of priors containing all mean and sd combinations
+prior_list <- c()
+for (row in 1:nrow(c)){
+  first <- as.character(c[row,1])
+  second <- as.character(c[row,2])
+  label <- paste0("normal","(",first,",",second,")")
+prior_list <- append(prior_list, label)
+}
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_2_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_2_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_2_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_sa_2[nrow(tab_sa_2)+1,] = new_row
+}
+write.csv(tab_sa_2, "bf_analysis_exp2_2.csv")
+# calculate the proportion of BFs in favor of H0
+print(sum(tab_sa_2[,3]>=1)/length(tab_sa_2[,3]))
+```
+
+
+
 
 ### Experiment 3
 This section contains the code use to plot figures and perform statistical analysis for experiment3
 
-#### Plotting
+#### 3.1 Plotting
 
 ```{r }
 # import data
@@ -362,6 +548,7 @@ data_3 <-  data_3 %>% mutate(condition = fct_relevel(condition,"High","High-Low"
 summary(data_3)
 ```
 
+##### 3.1.1 Plot the mean rating score across conditions
 ```{r }
 # Plot the mean rating score across conditions
 # calculate the statistics
@@ -370,7 +557,7 @@ data_mean_3 <- data_3 %>% group_by(condition) %>% summarize(mean_rating=mean(rat
 ggplot(data=data_mean_3, mapping= aes(x=condition,y=mean_rating))+
   #geom_bar(stat = "identity",position = "dodge",fill="steelblue")+
   geom_col(width = 0.6,stat = "identity",position = "dodge",fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Order of the Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -380,6 +567,7 @@ ggplot(data=data_mean_3, mapping= aes(x=condition,y=mean_rating))+
 ggsave("bar_plot_exp3_condition.png")
 ```
 
+##### 3.1.2 Plot the mean rating score across conditions across modal combinations
 ```{r }
 # Plot the mean rating score across conditions across modal combinations
 data_3 <-  data_3 %>% mutate(condition = fct_relevel(condition,"High","High-Low","Low-High","Low"))
@@ -399,7 +587,7 @@ ggplot(data=data_mean_3_2, mapping= aes(x= modal,y=mean_rating, fill = condition
 
 
 ```
-
+##### 3.1.3 Plot the mean rating score across different modals
 
 ```{r }
 # preparation for plotting: 
@@ -432,7 +620,7 @@ data3_sub_mean <- data3_sub %>% group_by(epistemic_expression) %>% summarize(mea
 ggplot(data3_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,mean_rating)),
                                     y=mean_rating))+
   geom_bar(stat = "identity", position = "dodge", fill="steelblue")+
-  geom_text(aes(label=round(mean_rating,2)), vjust=3, color="white", size=3.5)+
+  geom_text(aes(label=round(mean_rating,1)), vjust=3, color="white", size=3.5)+
   geom_errorbar(aes(ymin=mean_rating-se, ymax=mean_rating+se),width=.5,position=position_dodge(.9))+
   labs(x = "Epistemic Modals", y = expression(paste("Probability\nRating")))+
   theme(axis.text.x = element_text(color = "grey20", size = 10, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -442,7 +630,7 @@ ggplot(data3_sub_mean, mapping= aes(x=fct_rev(fct_reorder(epistemic_expression,m
 ggsave("bar_plot_exp3_modals.png")
 ```
 
-#### Statistical testing
+#### 3.2 Statistical testing
 ```{r }
 # Since the dependent variable, rating scores, was bounded between 0 and 100, we analyzed the data on the logit scale rather than probability scale.
 # re-level condition, rescale the dependent variable (to 0~1)
@@ -456,6 +644,7 @@ data_3$rating_recode <- recode(data_3$rating_rescale, `1.00` = 0.999, `0.00` = 0
 data_3$rating_logit <- log(data_3$rating_recode/(1-data_3$rating_recode))
 ```
 
+##### 3.2.1 maximal brm model: High-low as the baseline
 ```{r }
 # building a linear regression model with high-low condition as the baseline
 brm_max_HL_3 <- brm (rating_logit ~ 1 + condition + 
@@ -478,6 +667,7 @@ mytable_exp3_1 <- kable(
 )
 ```
 
+##### 3.2.2 maximal brm model: Low-High as the baseline
 ```{r }
 # building a linear regression model with Low-High condition as the baseline
 data_3$condition<- factor(data_3$condition, levels = c("Low-High","High-Low","High","Low"))
@@ -500,4 +690,94 @@ mytable_exp3_2 <- kable(
   format = "latex"
 )
 
+```
+
+##### 3.2.3 Bayes factor analysis
+The maximal model used in the previous section reveals no statistically meaningful difference between "High-Low" and "Low-High" condition. This section further investigates the likelihood ratio of H0 over H1.
+```{r}
+# Subset the data_1 keeping only the two nested modal conditions
+data_3_sub <- data_3 %>% filter(data_3$condition == "High-Low" | data_3$condition == "Low-High")
+# create a list of uninformative prior for slope
+# the prior has a mean of 0.01 (the estimate from the previous model)
+# the sd of the prior varies but not smaller than 1, thus not too informative
+prior_list_bf_3 = c('normal(0.01, 10)', 'normal(0.01, 5)','normal(0.01, 1)')
+# create an empty data frame to store the output of bf analysis
+tab_bf_analysis_3 <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list_bf_3){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_3_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_3_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_3_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_bf_analysis_3[nrow(tab_bf_analysis_3)+1,] = new_row}
+
+write.csv(tab_bf_analysis_3, "tab_bf_analysis_3.csv")
+print(tab_bf_analysis_3)
+# The result reveals moderate to strong evidence for H0, which says
+# the coefficient of condition is zero
+# create latex table
+row.names(tab_bf_analysis_3) <- c('Prior', 'Estimate', 'BF01')
+tab_bf_analysis_3$estimate <- as.double(tab_bf_analysis_3$estimate)
+tab_bf_analysis_3$bf01 <- as.double(tab_bf_analysis_3$bf01 )
+mytable_exp3_3 <- kable(
+  tab_bf_analysis_3,
+  digits = 2,
+  align = c('c','c','c'),
+  format = "latex"
+)
+write.csv(tab_bf_analysis_3, "bf_analysis_exp3_1.csv")
+```
+##### 3.2.4 sensitivity analysis of prior 
+This section loops over a variety of priors for the slope of condition variable and see how they influence bf01
+```{r}
+tab_sa_3 <- data.frame(prior = character(),
+                     estimate = double(),
+                     bf01 = double())
+# select a set of means for the prior
+a <- seq(-0.01,0.01,by=0.005)
+# select a set of sds for the prior
+b <- seq(0.1,1,by=0.1)
+# cross a and b to get a set of mean and sd combinations
+c <- crossing(a,b)
+# create a list of priors containing all mean and sd combinations
+prior_list <- c()
+for (row in 1:nrow(c)){
+  first <- as.character(c[row,1])
+  second <- as.character(c[row,2])
+  label <- paste0("normal","(",first,",",second,")")
+prior_list <- append(prior_list, label)
+}
+# loops over a variety of priors for the slope of condition variable in brm model
+for (item in prior_list){
+  priors_mixed = c(set_prior(item, coef = 'conditionLowMHigh'))
+  brm_max_data_3_subset<- brm (rating_logit ~ 1 + condition 
+                            + (1+ condition|ID)
+                            + (1+ condition|item),
+                    data = data_3_sub,
+                    prior = priors_mixed, 
+                    sample_prior = TRUE,
+                    iter = 5000,
+                    seed = 123)
+  bf <- hypothesis(brm_max_data_3_subset,hypothesis = "conditionLowMHigh = 0")
+  p <- item
+  e <- bf$hypothesis[[2]]
+  b <- bf$hypothesis[[6]]
+  new_row <- c(p,e,b)
+  tab_sa_3[nrow(tab_sa_3)+1,] = new_row
+}
+write.csv(tab_sa_3, "bf_analysis_exp3_2.csv")
+# calculate the proportion of BFs in favor of H0
+print(sum(tab_sa_3[,3]>=1)/length(tab_sa_3[,3]))
 ```
