@@ -183,9 +183,9 @@ The maximal model used in the previous section reveals no statistically meaningf
 # Subset the data_1 keeping only the two nested modal conditions
 data_1_sub <- data_1 %>% filter(data_1$condition == "High-Low" | data_1$condition == "Low-High")
 # create a list of uninformative prior for slope
-# the prior has a mean of -0.2 (the estimate from the previous model)
+# the prior has a mean of -0.2 (the estimate from the previous model) and 0
 # the sd of the prior varies but not smaller than 1, thus not too informative
-prior_list_bf = c('normal(-0.2, 10)', 'normal(-0.2, 5)','normal(-0.2, 1)')
+prior_list_bf = c('normal(0, 10)', 'normal(0, 5)','normal(0, 1)','normal(-0.2, 10)', 'normal(-0.2, 5)','normal(-0.2, 1)')
 # create an empty data frame to store the output of bf analysis
 tab_bf_analysis <- data.frame(prior = character(),
                      estimate = double(),
@@ -213,7 +213,6 @@ print(tab_bf_analysis)
 # The result reveals moderate to strong evidence for H0, which says
 # the coefficient of condition is zero
 # create latex table
-row.names(tab_bf_analysis) <- c('Prior', 'Estimate', 'BF01')
 tab_bf_analysis$estimate <- as.double(tab_bf_analysis$estimate)
 tab_bf_analysis$bf01 <- as.double(tab_bf_analysis$bf01 )
 mytable_exp1_3 <- kable(
@@ -437,9 +436,9 @@ The maximal model used in the previous section reveals no statistically meaningf
 # Subset the data_1 keeping only the two nested modal conditions
 data_2_sub <- data_2 %>% filter(data_2$condition == "High-Low" | data_2$condition == "Low-High")
 # create a list of uninformative prior for slope
-# the prior has a mean of -0.12 (the estimate from the previous model)
+# the prior has a mean of -0.12 (the estimate from the previous model) and 0
 # the sd of the prior varies but not smaller than 1, thus not too informative
-prior_list_bf_2 = c('normal(-0.12, 10)', 'normal(-0.12, 5)','normal(-0.12, 1)')
+prior_list_bf_2 = c('normal(0, 10)', 'normal(0, 5)','normal(0, 1)','normal(-0.12, 10)', 'normal(-0.12, 5)','normal(-0.12, 1)')
 # create an empty data frame to store the output of bf analysis
 tab_bf_analysis_2 <- data.frame(prior = character(),
                      estimate = double(),
@@ -467,7 +466,6 @@ print(tab_bf_analysis_2)
 # The result reveals moderate to strong evidence for H0, which says
 # the coefficient of condition is zero
 # create latex table
-row.names(tab_bf_analysis_2) <- c('Prior', 'Estimate', 'BF01')
 tab_bf_analysis_2$estimate <- as.double(tab_bf_analysis_2$estimate)
 tab_bf_analysis_2$bf01 <- as.double(tab_bf_analysis_2$bf01 )
 mytable_exp2_3 <- kable(
@@ -700,7 +698,7 @@ data_3_sub <- data_3 %>% filter(data_3$condition == "High-Low" | data_3$conditio
 # create a list of uninformative prior for slope
 # the prior has a mean of 0.01 (the estimate from the previous model)
 # the sd of the prior varies but not smaller than 1, thus not too informative
-prior_list_bf_3 = c('normal(0.01, 10)', 'normal(0.01, 5)','normal(0.01, 1)')
+prior_list_bf_3 = c('normal(0, 10)', 'normal(0, 5)','normal(0, 1)','normal(0.01, 10)', 'normal(0.01, 5)','normal(0.01, 1)')
 # create an empty data frame to store the output of bf analysis
 tab_bf_analysis_3 <- data.frame(prior = character(),
                      estimate = double(),
@@ -728,7 +726,6 @@ print(tab_bf_analysis_3)
 # The result reveals moderate to strong evidence for H0, which says
 # the coefficient of condition is zero
 # create latex table
-row.names(tab_bf_analysis_3) <- c('Prior', 'Estimate', 'BF01')
 tab_bf_analysis_3$estimate <- as.double(tab_bf_analysis_3$estimate)
 tab_bf_analysis_3$bf01 <- as.double(tab_bf_analysis_3$bf01 )
 mytable_exp3_3 <- kable(
